@@ -30,9 +30,3 @@ Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file for contribution gui
 ## License
 
 This project is licensed under the MIT License. Full details are available in the [LICENSE](LICENSE) file.
-
-## Contact
-
-For inquiries or collaboration opportunities, please contact:
-
-Rory White - rorywhite200@gmail.com
