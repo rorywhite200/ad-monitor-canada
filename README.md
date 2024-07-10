@@ -22,11 +22,3 @@ Ad Monitor Canada is currently in development.
 ## Getting Started
 
 Detailed installation and usage instructions will be provided upon initial release.
-
-## Contributing
-
-Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file for contribution guidelines and code of conduct.
-
-## License
-
-This project is licensed under the MIT License. Full details are available in the [LICENSE](LICENSE) file.
