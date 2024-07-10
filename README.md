@@ -1,7 +1,7 @@
-# Can-Ad-a Tracker
+# Canadian Ad Tracker
 
 ## Purpose
-Can-Ad-a Tracker is a tool that collects, stores, and analyzes Canadian advertising data from Meta platforms. It's designed to support in-depth investigations into digital political advertising, disinformation campaigns, and evolving propaganda narratives.
+Canadian Ad Tracker is a tool that collects, stores, and analyzes Canadian advertising data from Meta platforms. It's designed to support in-depth investigations into digital political advertising, disinformation campaigns, and evolving propaganda narratives.
 
 ## Core Functionality
 1. **Data Collection**: Automatically harvests daily updates from Meta's Ad Library API.
