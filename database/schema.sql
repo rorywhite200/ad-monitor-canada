@@ -47,8 +47,8 @@ CREATE TABLE ad_content (
   INDEX idx_ad_component (ad_id, component)
 );
 
--- Ad audience table
-CREATE TABLE ad_audience (
+-- Ad demographics table
+CREATE TABLE ad_demographics (
   id INT AUTO_INCREMENT PRIMARY KEY,
   ad_id BIGINT,
   gender ENUM('Male', 'Female', 'Unknown'),
