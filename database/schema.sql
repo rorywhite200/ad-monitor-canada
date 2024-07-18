@@ -124,7 +124,7 @@ SELECT
     ad.gender,
     ad.age_range,
     ad.age_gender_percentage,
-    ap.name AS province_name,
+    ap.province AS province_name,
     ap.province_percentage
 FROM 
     ads a
