@@ -60,10 +60,27 @@ CREATE TABLE ad_demographics (
 CREATE TABLE ad_provinces (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ad_id BIGINT,
-    name VARCHAR(255),
-    province_percentage FLOAT,
+    province ENUM(
+        'Alberta',
+        'British Columbia',
+        'Manitoba',
+        'New Brunswick',
+        'Newfoundland and Labrador',
+        'Nova Scotia',
+        'Ontario',
+        'Prince Edward Island',
+        'Quebec',
+        'Saskatchewan',
+        'Northwest Territories',
+        'Yukon',
+        'Nunavut',
+        'Overseas',
+        'Unspecified'
+    ) NOT NULL,
+    province_percentage FLOAT NOT NULL,
     FOREIGN KEY (ad_id) REFERENCES ads(id),
-    INDEX idx_province (name)
+    INDEX idx_ad_province (ad_id, province),
+    UNIQUE KEY uk_ad_province (ad_id, province)
 );
 
 -- Stored procedure to update ad full text
