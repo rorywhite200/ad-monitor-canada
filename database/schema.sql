@@ -41,7 +41,7 @@ CREATE TABLE ads (
     cost_min DECIMAL(10, 2),
     cost_max DECIMAL(10, 2),
     full_text TEXT,
-    full_text_id VARCHAR(64) UNIQUE,
+    full_text_id VARCHAR(64),
     platforms VARCHAR(255) DEFAULT NULL,
     languages VARCHAR(255) DEFAULT NULL,
     body TEXT,
