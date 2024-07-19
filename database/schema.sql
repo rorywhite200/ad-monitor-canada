@@ -100,24 +100,12 @@ CREATE TABLE ad_provinces (
     UNIQUE KEY uk_ad_province (ad_id, province)
 );
 
--- Stored procedure to update ad full text
-DELIMITER //
-CREATE PROCEDURE update_ad_full_text(IN ad_id_param BIGINT)
-BEGIN
-    UPDATE ads
-    SET full_text = CONCAT_WS(' ', body, caption, description, link_title),
-        full_text_id = SHA2(CONCAT_WS(' ', body, caption, description, link_title), 256)
-    WHERE id = ad_id_param;
-END //
-DELIMITER ;
-
 -- View for easy data export
 CREATE OR REPLACE VIEW ad_data_export AS
 SELECT
     a.id AS ad_id,
     a.page_id,
     p.name AS page_name,
-    p.username AS page_username,
     a.funder_id,
     f.name AS funder_name,
     a.created_at,
