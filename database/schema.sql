@@ -1,21 +1,38 @@
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS ad_provinces;
+DROP TABLE IF EXISTS ad_demographics;
+DROP TABLE IF EXISTS ads;
+DROP TABLE IF EXISTS pages;
+DROP TABLE IF EXISTS funders;
+
+-- Drop existing stored procedure if it exists
+DROP PROCEDURE IF EXISTS update_ad_full_text;
+
+-- Drop existing view if it exists
+DROP VIEW IF EXISTS ad_data_export;
+
 -- Funders table
 CREATE TABLE funders (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL
+    name VARCHAR(255) NOT NULL UNIQUE
 );
+
+-- Insert the "Unspecified" funder
+INSERT INTO funders (id, name) VALUES (0, 'Unspecified');
 
 -- Pages table
 CREATE TABLE pages (
     id BIGINT PRIMARY KEY,
     name VARCHAR(255),
+    is_derived_id BOOLEAN,
     INDEX idx_name (name)
 );
 
 -- Ads table
 CREATE TABLE ads (
     id BIGINT PRIMARY KEY,
-    page_id BIGINT,
-    funder_id INT,
+    page_id BIGINT NOT NULL,
+    funder_id INT NOT NULL,
     created_at DATETIME,
     starts_at DATETIME,
     ends_at DATETIME,
@@ -47,8 +64,8 @@ CREATE TABLE ads (
 CREATE TABLE ad_demographics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ad_id BIGINT,
-    gender ENUM('Male', 'Female', 'Unknown'),
-    age_range ENUM('13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'),
+    gender ENUM('male', 'female', 'unknown', 'unspecified') DEFAULT 'unspecified',
+    age_range ENUM('13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'unspecified') DEFAULT 'unspecified',
     age_gender_percentage FLOAT,
     FOREIGN KEY (ad_id) REFERENCES ads(id),
     INDEX idx_ad_gender_age (ad_id, gender, age_range),
@@ -76,7 +93,7 @@ CREATE TABLE ad_provinces (
         'Nunavut',
         'Overseas',
         'Unspecified'
-    ) NOT NULL,
+    ) DEFAULT 'Unspecified',
     province_percentage FLOAT NOT NULL,
     FOREIGN KEY (ad_id) REFERENCES ads(id),
     INDEX idx_ad_province (ad_id, province),
@@ -96,10 +113,11 @@ DELIMITER ;
 
 -- View for easy data export
 CREATE OR REPLACE VIEW ad_data_export AS
-SELECT 
+SELECT
     a.id AS ad_id,
     a.page_id,
     p.name AS page_name,
+    p.username AS page_username,
     a.funder_id,
     f.name AS funder_name,
     a.created_at,
@@ -126,7 +144,7 @@ SELECT
     ad.age_gender_percentage,
     ap.province AS province_name,
     ap.province_percentage
-FROM 
+FROM
     ads a
 LEFT JOIN pages p ON a.page_id = p.id
 LEFT JOIN funders f ON a.funder_id = f.id
