@@ -4,10 +4,6 @@ DROP TABLE IF EXISTS ad_demographics;
 DROP TABLE IF EXISTS ads;
 DROP TABLE IF EXISTS pages;
 DROP TABLE IF EXISTS funders;
-
--- Drop existing stored procedure if it exists
-DROP PROCEDURE IF EXISTS update_ad_full_text;
-
 -- Drop existing view if it exists
 DROP VIEW IF EXISTS ad_data_export;
 
@@ -57,47 +53,37 @@ CREATE TABLE ads (
     INDEX idx_date_range (starts_at, ends_at),
     INDEX idx_page_date_range (page_id, starts_at, ends_at),
     INDEX idx_funder_date_range (funder_id, starts_at, ends_at),
+    INDEX idx_funder (funder_id),
+    INDEX idx_full_text_id (full_text_id),
     FULLTEXT INDEX idx_full_text (full_text)
 );
 
 -- Ad demographics table
 CREATE TABLE ad_demographics (
-    id INT AUTO_INCREMENT PRIMARY KEY,
     ad_id BIGINT,
     gender ENUM('male', 'female', 'unknown', 'unspecified') DEFAULT 'unspecified',
     age_range ENUM('13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'unspecified') DEFAULT 'unspecified',
     age_gender_percentage FLOAT,
+    PRIMARY KEY (ad_id, gender, age_range),
     FOREIGN KEY (ad_id) REFERENCES ads(id),
-    INDEX idx_ad_gender_age (ad_id, gender, age_range),
     INDEX idx_gender (gender),
     INDEX idx_age_range (age_range)
 );
 
 -- Ad provinces table
 CREATE TABLE ad_provinces (
-    id INT AUTO_INCREMENT PRIMARY KEY,
     ad_id BIGINT,
     province ENUM(
-        'Alberta',
-        'British Columbia',
-        'Manitoba',
-        'New Brunswick',
-        'Newfoundland and Labrador',
-        'Nova Scotia',
-        'Ontario',
-        'Prince Edward Island',
-        'Quebec',
-        'Saskatchewan',
-        'Northwest Territories',
-        'Yukon',
-        'Nunavut',
-        'Overseas',
-        'Unspecified'
+        'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick',
+        'Newfoundland and Labrador', 'Nova Scotia', 'Ontario',
+        'Prince Edward Island', 'Quebec', 'Saskatchewan',
+        'Northwest Territories', 'Yukon', 'Nunavut',
+        'Overseas', 'Unspecified'
     ) DEFAULT 'Unspecified',
     province_percentage FLOAT NOT NULL,
+    PRIMARY KEY (ad_id, province),
     FOREIGN KEY (ad_id) REFERENCES ads(id),
-    INDEX idx_ad_province (ad_id, province),
-    UNIQUE KEY uk_ad_province (ad_id, province)
+    INDEX idx_province (province)
 );
 
 -- View for easy data export
