@@ -198,3 +198,15 @@ def prepare_demographic_data(demographics):
         })
     
     return prepared_demographics
+
+def process_in_batches(items, batch_size, connection, process_function):
+    total_items = len(items)
+    for start in range(0, total_items, batch_size):
+        batch = items[start:start + batch_size]
+        process_function(batch, connection)
+
+def truncate_fields(items, max_length, fields):
+    for item in items:
+        for field in fields:
+            if field in item and len(item[field]) > max_length:
+                item[field] = item[field][:max_length]
