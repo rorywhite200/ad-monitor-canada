@@ -5,6 +5,7 @@ from ad_collector import ad_collector
 from ad_database_utils import load_funder_cache, load_page_cache
 import os
 from dotenv import load_dotenv
+import pytz
 
 # Load environment variables from .env file
 load_dotenv(override=True)
@@ -33,16 +34,20 @@ def main():
         print(f"Error while connecting to MySQL: {error}")
         return
 
-    # Set the date range for ad collection (e.g., last 7 days)
-    start_date = "2024-06-27"
-    stop_date = "2024-07-27"
+    # Set the date range for ad collection (e.g., last month from today)
+    timezone = pytz.timezone('America/Toronto')  # Set to Ottawa's timezone
+    stop_date = datetime.now(timezone)
+    start_date = stop_date - timedelta(days=30)
+    
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    stop_date_str = stop_date.strftime('%Y-%m-%d')
 
     load_funder_cache(connection)
     load_page_cache(connection)
 
     # Call the ad_collector function
     try:
-        collected_ads = ad_collector(start_date, stop_date, connection, facebook_api_keys)
+        collected_ads = ad_collector(start_date_str, stop_date_str, connection, facebook_api_keys)
     except Exception as e:
         print(f"An error occurred during ad collection: {e}")
     finally:
