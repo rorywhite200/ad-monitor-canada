@@ -54,22 +54,13 @@ CREATE TABLE ads (
     FOREIGN KEY (page_id) REFERENCES pages(id),
     FOREIGN KEY (funder_id) REFERENCES funders(id),
     INDEX idx_date_range (start_date, end_date),
-    INDEX idx_start_date (start_date),
     INDEX idx_page_date_range (page_id, start_date, end_date),
     INDEX idx_funder_date_range (funder_id, start_date, end_date),
-    INDEX idx_funder (funder_id),
     FULLTEXT INDEX idx_full_text (body, description, link_title),
-    FULLTEXT INDEX idx_full_text_body_desc (body, description),
     FULLTEXT INDEX idx_full_text_body (body),
-    FULLTEXT INDEX idx_full_text_desc (description),
-    FULLTEXT INDEX idx_full_text_link_title (link_title),
-    FULLTEXT INDEX idx_full_text_link_url (link_url),
-    INDEX idx_ads_page_id (page_id),
     INDEX idx_ads_id (id),
-    INDEX idx_ads_created_at (created_date),
     INDEX idx_ads_covering (id, page_id, funder_id),
-    INDEX idx_funder_page_date (funder_id, page_id, start_date, end_date),
-    INDEX idx_is_active (is_active)
+    INDEX idx_funder_page_date (funder_id, page_id, start_date, end_date)
 );
 
 -- Ad demographics table
@@ -82,7 +73,6 @@ CREATE TABLE ad_demographics (
     FOREIGN KEY (ad_id) REFERENCES ads(id),
     INDEX idx_gender (gender),
     INDEX idx_age_range (age_range),
-    INDEX idx_ad_id (ad_id)
 );
 
 -- Ad provinces table
@@ -99,7 +89,6 @@ CREATE TABLE ad_provinces (
     PRIMARY KEY (ad_id, province),
     FOREIGN KEY (ad_id) REFERENCES ads(id),
     INDEX idx_province (province),
-    INDEX idx_ad_id (ad_id)
 );
 
 DELIMITER //
