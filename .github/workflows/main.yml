@@ -38,4 +38,4 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Ad Collector Script
-      run: python your_script.py
+      run: python main.py
