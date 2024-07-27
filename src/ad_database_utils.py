@@ -4,6 +4,7 @@ from mysql.connector import Error
 import unicodedata
 import random
 
+
 CANADIAN_PROVINCES = {
     'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
     'Nova Scotia', 'Ontario', 'Prince Edward Island', 'Quebec', 'Saskatchewan', 
@@ -167,6 +168,7 @@ def batch_insert_region_data(region_data, db_connection):
     cursor.executemany(insert_query, region_data)
     db_connection.commit()
 
+
 def prepare_region_data(regions):
     if not regions or regions == '':
         return [{'region': 'Unspecified', 'percentage': 1.0}]
@@ -175,6 +177,10 @@ def prepare_region_data(regions):
     overseas_percentage = 0.0
 
     for region in regions:
+        # Check if the region has the 'region' and 'percentage' properties
+        if 'region' not in region or region['region'] is None or 'percentage' not in region or region['percentage'] is None:
+            continue  # Skip this iteration if required properties are missing
+
         if region['region'] in CANADIAN_PROVINCES:
             canadian_regions.append({'region': region['region'], 'percentage': float(region['percentage'])})
         else:
@@ -187,12 +193,18 @@ def prepare_region_data(regions):
 
 def prepare_demographic_data(demographics):
     expected_age_ranges = {'13-17', '18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'unspecified'}
+    expected_genders = {'male', 'female', 'unknown', 'unspecified'}
     prepared_demographics = []
     
     for demographic in demographics or [{'gender': 'unspecified', 'age': 'unspecified', 'percentage': 1.0}]:
+
+        if 'age' not in demographic or 'percentage' not in demographic or demographic['percentage'] is None or 'gender' not in demographic:
+            continue  # Skip this iteration if required properties are missing
+
         age_range = demographic['age'] if demographic['age'] in expected_age_ranges else 'unspecified'
+        gender = demographic['gender'] if demographic['gender'] in expected_genders else 'unspecified'
         prepared_demographics.append({
-            'gender': demographic['gender'],
+            'gender': gender,
             'age_range': age_range,
             'percentage': float(demographic['percentage'])
         })
