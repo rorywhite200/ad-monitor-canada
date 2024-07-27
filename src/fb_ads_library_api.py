@@ -83,8 +83,6 @@ class FbAdsLibraryTraversal:
         responsive_mode = False
         reached_single_item = False
 
-        print(f"Starting to fetch ad archives with initial page limit: {initial_page_limit}")
-
         while next_page_url is not None:
             try:
                 # Adjust the limit in the URL
@@ -114,7 +112,6 @@ class FbAdsLibraryTraversal:
 
                     if error_count >= retry_limit:
                         responsive_mode = True
-                        print("Entering responsive mode due to repeated errors.")
                     
                     if responsive_mode:
                         if current_page_limit > 1:
@@ -140,12 +137,11 @@ class FbAdsLibraryTraversal:
 
                 generation_count += 1
                 successful_items_count += len(filtered)
-                print(f"Generation {generation_count}: Found {len(filtered)} matching ads. Total successful: {successful_items_count}")
+                print(f"Generation {generation_count}: Found {len(filtered)} matching ads.")
 
                 if "paging" in response_data and len(filtered) == current_page_limit:
                     next_page_url = response_data["paging"]["next"]
                     if reached_single_item:
-                        print("Resetting to initial page limit after successful processing of single item.")
                         current_page_limit = initial_page_limit
                         successful_items_count = 0
                         responsive_mode = False
@@ -174,21 +170,16 @@ class FbAdsLibraryTraversal:
                 error_count += 1
                 if error_count >= retry_limit:
                     responsive_mode = True
-                    print("Entering responsive mode due to repeated exceptions.")
                 continue
 
         print(f"Finished processing. Total generations: {generation_count}")
 
     @staticmethod
     def print_rate_limit_headers(headers):
-        rate_limit_keys = ['X-App-Usage', 'X-Ad-Account-Usage', 'X-Business-Use-Case-Usage']
+        rate_limit_keys = ['X-Business-Use-Case-Usage']
         for key in rate_limit_keys:
             if key in headers:
                 print(f"{key}: {headers[key]}")
-        print("Other headers:")
-        for key, value in headers.items():
-            if key not in rate_limit_keys:
-                print(f"{key}: {value}")
 
     @classmethod
     def generate_ad_archives_from_url(cls, failure_url, after_date="1970-01-01"):
