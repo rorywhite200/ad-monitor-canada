@@ -1,0 +1,41 @@
+name: Run Ad Collector Script
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_DATABASE: ${{ secrets.DB_DATABASE }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      FACEBOOK_API_KEY_1: ${{ secrets.FACEBOOK_API_KEY_1 }}
+      FACEBOOK_API_KEY_2: ${{ secrets.FACEBOOK_API_KEY_2 }}
+      FACEBOOK_API_KEY_3: ${{ secrets.FACEBOOK_API_KEY_3 }}
+      FACEBOOK_API_KEY_4: ${{ secrets.FACEBOOK_API_KEY_4 }}
+      FACEBOOK_API_KEY_5: ${{ secrets.FACEBOOK_API_KEY_5 }}
+      FACEBOOK_API_KEY_6: ${{ secrets.FACEBOOK_API_KEY_6 }}
+      FACEBOOK_API_KEY_7: ${{ secrets.FACEBOOK_API_KEY_7 }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Ad Collector Script
+      run: python your_script.py
