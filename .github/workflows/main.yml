@@ -10,6 +10,9 @@ on:
     - cron: '0 20 * * *'   # 4 PM ET
     - cron: '0 0 * * *'    # 8 PM ET
 
+permissions:
+  contents: write
+
 jobs:
   run-script:
     runs-on: ubuntu-latest
@@ -48,7 +51,7 @@ jobs:
     - name: Update last update timestamp
       run: |
         est_time=$(TZ='America/New_York' date +'%Y-%m-%dT%H:%M:%S%z')
-        echo "{\"last_update\": \"$est_time\"}" > last_update.json
+        echo "{\"schemaVersion\": 1, \"label\": \"Last Update (ET)\", \"message\": \"$est_time\", \"color\": \"blue\"}" > last_update.json
 
     - name: Commit and push last update timestamp
       run: |
