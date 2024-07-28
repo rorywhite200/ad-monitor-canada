@@ -106,92 +106,79 @@ BEGIN
         SET p_group_by = 'page';
     END IF;
     
-    IF p_group_by = 'funder' THEN
+    -- Common Table Expression (CTE) to calculate the spending estimates
+    WITH ad_spending_estimates AS (
         SELECT 
-            f.id AS funder_id,
-            f.name AS funder_name,
-            COUNT(DISTINCT a.id) AS ad_count,
-            SUM(a.cost_min) AS total_spend_min,
-            SUM(a.cost_max) AS total_spend_max,
-            SUM(a.views_min) AS total_views_min,
-            SUM(a.views_max) AS total_views_max
-        FROM 
-            ads a
-        JOIN 
-            funders f ON a.funder_id = f.id
+            id,
+            page_id,
+            funder_id,
+            -- Calculate the days the ad overlapped with the specified period
+            GREATEST(
+                DATEDIFF(
+                    LEAST(COALESCE(end_date, CURDATE()), p_end_date),
+                    GREATEST(start_date, p_start_date)
+                ) + 1,
+                0
+            ) AS days_active_in_period,
+            -- Calculate daily spending estimates
+            cost_min / GREATEST(DATEDIFF(COALESCE(end_date, CURDATE()), start_date), 1) AS daily_min_spend,
+            cost_max / GREATEST(DATEDIFF(COALESCE(end_date, CURDATE()), start_date), 1) AS daily_max_spend,
+            -- Calculate daily views estimates
+            views_min / GREATEST(DATEDIFF(COALESCE(end_date, CURDATE()), start_date), 1) AS daily_min_views,
+            views_max / GREATEST(DATEDIFF(COALESCE(end_date, CURDATE()), start_date), 1) AS daily_max_views
+        FROM ads
         WHERE 
-            f.name != 'Unspecified'
-            AND (p_keyword IS NULL OR 
-                 MATCH(a.body, a.description, a.link_title) AGAINST(p_keyword IN BOOLEAN MODE))
+            (p_keyword IS NULL OR MATCH(body, description, link_title) AGAINST(p_keyword IN BOOLEAN MODE))
             AND (
-                (a.start_date <= p_end_date AND a.end_date >= p_start_date)
-                OR (a.start_date <= p_end_date AND a.end_date IS NULL)
-                OR (a.start_date IS NULL AND a.end_date >= p_start_date)
-                OR (a.start_date IS NULL AND a.end_date IS NULL AND a.is_active = TRUE)
+                (start_date <= p_end_date AND end_date >= p_start_date)
+                OR (start_date <= p_end_date AND end_date IS NULL)
+                OR (start_date IS NULL AND end_date >= p_start_date)
+                OR (start_date IS NULL AND end_date IS NULL AND is_active = TRUE)
             )
-        GROUP BY 
-            f.id, f.name
-        ORDER BY 
-            ad_count DESC;
-    ELSEIF p_group_by = 'page' THEN
+            AND currency = 'CAD'
+    )
+    
+    -- Main query using the CTE
+    SELECT 
+        group_id AS id,
+        group_name AS name,
+        COUNT(DISTINCT ad_id) AS ad_count,
+        SUM(min_spend_for_period) AS total_min_spend_for_period,
+        SUM(max_spend_for_period) AS total_max_spend_for_period,
+        SUM(min_views_for_period) AS total_min_views_for_period,
+        SUM(max_views_for_period) AS total_max_views_for_period
+    FROM (
         SELECT 
-            p.id AS page_id,
-            p.name AS page_name,
-            COUNT(a.id) AS ad_count,
-            SUM(a.cost_min) AS total_spend_min,
-            SUM(a.cost_max) AS total_spend_max,
-            SUM(a.views_min) AS total_views_min,
-            SUM(a.views_max) AS total_views_max
+            CASE 
+                WHEN p_group_by = 'funder' THEN f.id 
+                WHEN p_group_by = 'page' THEN p.id
+                ELSE CONCAT(f.id, '-', p.id)
+            END AS group_id,
+            CASE 
+                WHEN p_group_by = 'funder' THEN f.name 
+                WHEN p_group_by = 'page' THEN p.name
+                ELSE CONCAT(f.name, ' - ', p.name)
+            END AS group_name,
+            ase.id AS ad_id,
+            ase.daily_min_spend * ase.days_active_in_period AS min_spend_for_period,
+            ase.daily_max_spend * ase.days_active_in_period AS max_spend_for_period,
+            ase.daily_min_views * ase.days_active_in_period AS min_views_for_period,
+            ase.daily_max_views * ase.days_active_in_period AS max_views_for_period
         FROM 
-            ads a
+            ad_spending_estimates ase
         JOIN 
-            pages p ON a.page_id = p.id
+            funders f ON ase.funder_id = f.id
+        JOIN 
+            pages p ON ase.page_id = p.id
         WHERE 
-            (p_keyword IS NULL OR 
-             MATCH(a.body, a.description, a.link_title) AGAINST(p_keyword IN BOOLEAN MODE))
-            AND (
-                (a.start_date <= p_end_date AND a.end_date >= p_start_date)
-                OR (a.start_date <= p_end_date AND a.end_date IS NULL)
-                OR (a.start_date IS NULL AND a.end_date >= p_start_date)
-                OR (a.start_date IS NULL AND a.end_date IS NULL AND a.is_active = TRUE)
-            )
-        GROUP BY 
-            p.id, p.name
-        ORDER BY 
-            ad_count DESC;
-    ELSEIF p_group_by = 'both' THEN
-        SELECT 
-            f.id AS funder_id,
-            f.name AS funder_name,
-            p.id AS page_id,
-            p.name AS page_name,
-            COUNT(a.id) AS ad_count,
-            SUM(a.cost_min) AS total_spend_min,
-            SUM(a.cost_max) AS total_spend_max,
-            SUM(a.views_min) AS total_views_min,
-            SUM(a.views_max) AS total_views_max
-        FROM 
-            ads a
-        JOIN 
-            funders f ON a.funder_id = f.id
-        JOIN 
-            pages p ON a.page_id = p.id
-        WHERE 
-            f.name != 'Unspecified'
-            AND (p_keyword IS NULL OR 
-                 MATCH(a.body, a.description, a.link_title) AGAINST(p_keyword IN BOOLEAN MODE))
-            AND (
-                (a.start_date <= p_end_date AND a.end_date >= p_start_date)
-                OR (a.start_date <= p_end_date AND a.end_date IS NULL)
-                OR (a.start_date IS NULL AND a.end_date >= p_start_date)
-                OR (a.start_date IS NULL AND a.end_date IS NULL AND a.is_active = TRUE)
-            )
-        GROUP BY 
-            f.id, f.name, p.id, p.name
-        ORDER BY 
-            ad_count DESC;
-    END IF;
+            f.name != 'Unspecified' OR p_group_by = 'page'
+    ) AS subquery
+    GROUP BY 
+        group_id, group_name
+    ORDER BY 
+        ad_count DESC;
 END //
+
 DELIMITER ;
 
 -- Drop the view if it exists
