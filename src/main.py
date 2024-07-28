@@ -46,14 +46,13 @@ def main():
         start_date = now - timedelta(days=0)
     
     start_date_str = start_date.strftime('%Y-%m-%d')
-    stop_date_str = now.strftime('%Y-%m-%d')
 
     load_funder_cache(connection)
     load_page_cache(connection)
 
     # Call the ad_collector function
     try:
-        collected_ads = ad_collector(start_date_str, stop_date_str, connection, facebook_api_keys)
+        collected_ads = ad_collector(start_date_str, connection, facebook_api_keys)
     except Exception as e:
         print(f"An error occurred during ad collection: {e}")
     finally:

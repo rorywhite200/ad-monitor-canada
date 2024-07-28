@@ -12,7 +12,7 @@ def get_ad_archive_id(data):
 class FbAdsLibraryTraversal:
     default_url_pattern = (
         "https://graph.facebook.com/{}/ads_archive?unmask_removed_content=true&ad_type=POLITICAL_AND_ISSUE_ADS&access_token={}&"
-        + "fields={}&search_terms={}&ad_reached_countries={}&search_page_ids={}&ad_delivery_date_min={}&ad_delivery_date_max={}&"
+        + "fields={}&search_terms={}&ad_reached_countries={}&search_page_ids={}&ad_delivery_date_min={}&"
         + "ad_active_status={}&limit={}"
     )
     
@@ -26,7 +26,6 @@ class FbAdsLibraryTraversal:
         country,
         search_page_ids="",
         ad_delivery_date_min="1970-01-01",
-        ad_delivery_date_max="1970-01-01",
         ad_active_status="ALL",
         initial_page_limit=500,
         api_version=None,
@@ -42,7 +41,6 @@ class FbAdsLibraryTraversal:
         self.initial_page_limit = initial_page_limit
         self.retry_limit = retry_limit
         self.ad_delivery_date_min = ad_delivery_date_min
-        self.ad_delivery_date_max = ad_delivery_date_max
         if api_version is None:
             self.api_version = self.default_api_version
         else:
@@ -57,14 +55,12 @@ class FbAdsLibraryTraversal:
             self.country,
             self.search_page_ids,
             self.ad_delivery_date_min,
-            self.ad_delivery_date_max,
             self.ad_active_status,
             self.initial_page_limit,
         )
         return self.__class__._get_ad_archives_from_url(
             next_page_url, 
             start_date=self.ad_delivery_date_min, 
-            stop_date=self.ad_delivery_date_max, 
             retry_limit=self.retry_limit, 
             initial_page_limit=self.initial_page_limit,
             access_tokens=self.access_tokens
@@ -72,7 +68,7 @@ class FbAdsLibraryTraversal:
 
     @staticmethod
     def _get_ad_archives_from_url(
-        next_page_url, start_date="1970-01-01", stop_date=datetime.now().strftime('%Y-%m-%d'), retry_limit=5, initial_page_limit=500, access_tokens=None
+        next_page_url, start_date="1970-01-01", retry_limit=5, initial_page_limit=500, access_tokens=None
     ):
         print(next_page_url)
         error_count = 0

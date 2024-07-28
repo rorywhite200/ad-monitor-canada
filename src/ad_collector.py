@@ -22,7 +22,7 @@ CANADIAN_PROVINCES = {
     'Northwest Territories', 'Yukon', 'Nunavut'
 }
 
-def ad_collector(start_date, stop_date, db_connection, facebook_api_keys):
+def ad_collector(start_date, db_connection, facebook_api_keys):
 
     collector = FbAdsLibraryTraversal(
         facebook_api_keys,
@@ -30,7 +30,6 @@ def ad_collector(start_date, stop_date, db_connection, facebook_api_keys):
         ".",
         "CA",
         ad_delivery_date_min=start_date,
-        ad_delivery_date_max=stop_date,
         api_version="v20.0"
     )
 
