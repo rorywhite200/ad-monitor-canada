@@ -1,3 +1,7 @@
+[![API](https://img.shields.io/badge/API-Meta%20Ad%20Library-blue)]()
+[![Database](https://img.shields.io/badge/Database-MySQL-orange)]()
+[![Coverage](https://img.shields.io/badge/Coverage-Canada-red)]()
+
 # Ad Monitor Canada
 
 <img src="https://github.com/rorywhite200/ad-monitor-canada/assets/125914446/6339ee9f-9509-4a21-b0c0-bfc6f568cbc7" alt="ad monitor" width="200">
