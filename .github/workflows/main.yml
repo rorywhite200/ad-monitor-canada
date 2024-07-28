@@ -1,8 +1,6 @@
 name: Run Ad Collector Script
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
   schedule:
     - cron: '0 4 * * *'    # 12 AM ET
