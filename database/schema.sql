@@ -135,7 +135,6 @@ BEGIN
                 OR (start_date IS NULL AND end_date >= p_start_date)
                 OR (start_date IS NULL AND end_date IS NULL AND is_active = TRUE)
             )
-            AND currency = 'CAD'
     )
     
     -- Main query using the CTE
