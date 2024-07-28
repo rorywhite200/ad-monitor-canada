@@ -45,18 +45,3 @@ jobs:
 
     - name: Run Ad Collector Script
       run: python src/main.py
-
-    - name: Update last update timestamp
-      run: |
-        est_time=$(TZ='America/New_York' date +'%Y-%m-%dT%H:%M:%S%z')
-        echo "{\"schemaVersion\": 1, \"label\": \"Last Update (ET)\", \"message\": \"$est_time\", \"color\": \"blue\"}" > last_update.json
-
-    - name: Commit and push last update timestamp
-      run: |
-        git config --global user.name 'github-actions'
-        git config --global user.email 'github-actions@github.com'
-        git add last_update.json
-        git commit -m "Update last update timestamp"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
