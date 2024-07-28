@@ -100,8 +100,7 @@ class FbAdsLibraryTraversal:
                         print(f"Error code {error_code} encountered. Rotating API key.")
                         api_key_index += 1
                         if api_key_index >= len(access_tokens):
-                            print("All API keys have been exhausted. Terminating process.")
-                            break
+                            raise Exception("All API keys have been exhausted. Terminating process.")
                         api_key = access_tokens[api_key_index % len(access_tokens)]
                         next_page_url = re.sub(r'access_token=[^&]+', f'access_token={api_key}', next_page_url)
                         print(f"Switched to API key {api_key_index + 1}")
@@ -124,8 +123,8 @@ class FbAdsLibraryTraversal:
                             reached_single_item = True
                             error_count = 0
                         else:
-                            print("Multiple errors encountered. Terminating process.")
-                            break
+                            print(f"Headers: {response.headers if 'response' in locals() else 'No response headers available'}")
+                            raise Exception("Reduced request to 1 ad without body but still failed.")
                     continue
 
                 filtered = response_data["data"]
