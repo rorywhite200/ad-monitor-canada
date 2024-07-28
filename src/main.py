@@ -34,13 +34,19 @@ def main():
         print(f"Error while connecting to MySQL: {error}")
         return
 
-    # Set the date range for ad collection (e.g., last month from today)
+    # Set the date range for ad collection
     timezone = pytz.timezone('America/Toronto')  # Set to Ottawa's timezone
-    stop_date = datetime.now(timezone)
-    start_date = stop_date - timedelta(days=30)
+    now = datetime.now(timezone)
+    
+    if now.hour == 0:  # Check if it's 12 AM
+        # Collect data for the last 30 days
+        start_date = now - timedelta(days=30)
+    else:
+        # Collect data for the current day
+        start_date = now - timedelta(days=0)
     
     start_date_str = start_date.strftime('%Y-%m-%d')
-    stop_date_str = stop_date.strftime('%Y-%m-%d')
+    stop_date_str = now.strftime('%Y-%m-%d')
 
     load_funder_cache(connection)
     load_page_cache(connection)
