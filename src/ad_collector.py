@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from datetime import datetime
+import pytz
 from fb_ads_library_api import FbAdsLibraryTraversal
 from ad_database_utils import (
     get_or_create_funder_id,
@@ -32,6 +33,9 @@ def ad_collector(start_date, stop_date, db_connection, facebook_api_keys):
         ad_delivery_date_max=stop_date,
         api_version="v20.0"
     )
+
+    timezone = pytz.timezone('America/Toronto') 
+    now = datetime.now(timezone).date()
     
     ads_list = []
     demographic_data_list = []
@@ -56,7 +60,7 @@ def ad_collector(start_date, stop_date, db_connection, facebook_api_keys):
                 'funder_id': funder_id,
                 'created_date': datetime.strptime(ad['ad_creation_time'], '%Y-%m-%d') if 'ad_creation_time' in ad else None,
                 'start_date': datetime.strptime(ad['ad_delivery_start_time'], '%Y-%m-%d') if 'ad_delivery_start_time' in ad else None,
-                'end_date': datetime.strptime(ad['ad_delivery_stop_time'], '%Y-%m-%d') if 'ad_delivery_stop_time' in ad else datetime.today().date(),
+                'end_date': datetime.strptime(ad['ad_delivery_stop_time'], '%Y-%m-%d') if 'ad_delivery_stop_time' in ad else now,
                 'is_active': not ad.get('ad_delivery_stop_time'),
                 'ad_library_url': ad.get('ad_snapshot_url'),
                 'currency': ad.get('currency'),
