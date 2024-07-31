@@ -1,0 +1,222 @@
+---
+execute:
+  echo: false
+format: 
+  html:
+    page-layout: full
+---
+
+# Query Library {#sec-library}
+
+Discover useful queries.
+
+```{python}
+import pandas as pd
+url = "https://docs.google.com/spreadsheets/d/1575_9t2VfbilHuCAg71j0ynDvHC2BbHBNVAqZ4PRjzw/gviz/tq?tqx=out:csv"
+dataset = pd.read_csv(url)
+ojs_define(data = dataset)
+```
+
+
+```{ojs}
+{
+  const queries = {};
+
+// Transform the original object
+    data.Name.forEach((name, index) => {
+    queries[name] = {
+        query: data.Query[index],
+        note: data.Notes[index]
+    };
+    });
+
+  const styles = html`<style>
+    #container {
+      display: flex;
+      height: 400px;
+      background: #101b3d;
+      font-family: sans-serif;
+    }
+    #sidebar {
+      width: 30%;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      height: 400px;
+      color: #8892b0;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    #search-box {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #233554; 
+      border-radius: 5px;
+      color: #8892b0;
+      background-color: #172a45;
+    }
+    #query-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      border: 1px solid #233554;
+      border-radius: 5px;
+      max-height: calc(100vh - 100px);
+      background-color: #172a45;
+    }
+    .query-option {
+      padding: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      border-bottom: 1px solid #233554;
+    }
+    .query-option:hover {
+      background-color: #1d3456;
+    }
+    #content {
+      width: 70%;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      height: 400px;
+    }
+    #query-editor {
+      width: 100%;
+      flex-grow: 1;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      border: 1px solid #233554;
+      border-radius: 5px;
+      font-size: 18px;
+      line-height: 1.5;
+      background-color: #172a45;
+      color: #8892b0;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    #query-editor:focus {
+      outline: none;
+    }
+    #query-note {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #233554;
+      border-radius: 5px;
+      color: #8892b0;
+      font-size: 0.9rem;
+    }
+    .keyword { color: #ff79c6; }
+    .function { color: #8be9fd; }
+    .string { color: #f1fa8c; }
+    .number { color: #bd93f9; }
+    .comment { color: #6272a4; }
+  </style>`;
+
+  const container = html`<div id="container">`;
+  
+  const sidebar = html`<div id="sidebar">`;
+  const searchBox = html`<input type="text" id="search-box" placeholder="Search queries...">`;
+  const queryList = html`<div id="query-list">`;
+
+  const content = html`<div id="content">`;
+  const queryEditor = html`<div id="query-editor" contenteditable="true" spellcheck="false"></div>`;
+  const queryNote = html`<div id="query-note"></div>`;
+
+  function renderQueryList(filter = '') {
+    queryList.innerHTML = '';  
+    Object.keys(queries).forEach(key => {
+      if (key.toLowerCase().includes(filter.toLowerCase())) {
+        const option = html`<div class="query-option">${key}</div>`;
+        option.onclick = () => {
+          queryEditor.textContent = queries[key].query;
+          queryNote.textContent = queries[key].note;
+          highlightSyntax();
+        };
+        queryList.appendChild(option);
+      }
+    }); 
+  }
+
+  function highlightSyntax() {
+    let text = queryEditor.innerText;
+    text = text.replace(/\b(CALL|SELECT|FROM|WHERE|JOIN|ON|GROUP BY|HAVING|ORDER BY|UNION|CASE|WHEN|THEN|ELSE|END|AS|WITH)\b/gi, '<span class="keyword">$1</span>');
+    text = text.replace(/\b(AVG|SUM|COUNT|MAX|MIN)\b/gi, '<span class="function">$1</span>');
+    text = text.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
+    text = text.replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
+    text = text.replace(/--.*$/gm, '<span class="comment">$&</span>');  
+           
+    // Save cursor position
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(queryEditor);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    const caretOffset = preCaretRange.toString().length;
+
+    // Update content
+    queryEditor.innerHTML = text;
+
+    // Restore cursor position
+    const newRange = document.createRange();
+    newRange.setStart(queryEditor, 0);
+    newRange.setEnd(queryEditor, 0);
+    const nodeStack = [queryEditor];
+    let node, foundStart = false, stop = false;
+    let charCount = 0;
+
+    while (!stop && (node = nodeStack.pop())) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const nextCharCount = charCount + node.length;
+        if (!foundStart && caretOffset >= charCount && caretOffset <= nextCharCount) {
+          newRange.setStart(node, caretOffset - charCount);
+          foundStart = true;
+        }
+        if (foundStart && caretOffset >= charCount && caretOffset <= nextCharCount) {
+          newRange.setEnd(node, caretOffset - charCount);
+          stop = true;
+        }
+        charCount = nextCharCount;
+      } else {
+        let i = node.childNodes.length;
+        while (i--) {
+          nodeStack.push(node.childNodes[i]);
+        }
+      }
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
+
+  searchBox.oninput = () => renderQueryList(searchBox.value);
+  queryEditor.oninput = highlightSyntax;
+
+  // Set placeholder text
+  queryEditor.dataset.placeholder = "Select a query from the list";
+
+  // Handle placeholder behavior
+  queryEditor.onfocus = function() {
+    if (this.textContent.trim() === '') {
+      this.textContent = '';
+    }
+  };
+
+  queryEditor.onblur = function() {
+    if (this.textContent.trim() === '') {
+      this.textContent = '';
+    }
+  };
+
+  sidebar.append(searchBox, queryList);
+  content.append(queryEditor, queryNote);
+  container.append(sidebar, content);
+
+  renderQueryList();
+  
+  return html`${styles}${container}`;
+}
+```

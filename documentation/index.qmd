@@ -1,0 +1,29 @@
+# Intro {.unnumbered}
+
+This guide explains our methodology for harvesting political ads shown in Canada from the Meta Ad Library and making the data accessible in a MySQL database. 
+
+**What does each section cover?**
+
+@sec-collection addresses all things API: how we harvested the data. 
+
+@sec-wrangling explains any judgement calls we made around null values
+
+@sec-database introduces our MySQL database structure and provides tips for querying it
+
+@sec-library contains a variety of useful queries for getting interesting data
+
+@sec-nuances touches on important nuances when interpreting the ad library data 
+
+## Overview
+
+Below is a diagram of our overall process:
+
+```{mermaid}
+graph LR
+    E[GitHub Actions] -->|Trigger| W[Workflow]
+    subgraph W [Collection and Storage Workflow]
+        B[Data Collection] --> C[Data Wrangling]
+        C --> D[(MySQL Database)]
+    end
+    A[Facebook AdLibrary] -.->|API| B
+```

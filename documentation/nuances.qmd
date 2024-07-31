@@ -1,0 +1,37 @@
+# Nuances {#sec-nuances}
+
+## What does spending really mean? {#sec-spending}
+
+Spending on an ad is reported with an upper bound and lower bound by Meta.
+
+It is the **total amount spent on the ad across its entire lifespan**. This is true even if you restrict your search with a date range. The same thing applies to views and audience size.
+
+### An exception: get_pivot_table()
+
+The only place in the database where this differs is in the `get_pivot_table` procedure @sec-pivot. Here, we estimate the spending and views **during the date range itself** by doing a couple things in the background:
+
+1. We calculate the average amount per day for the ad
+2. We multiply this by the number of days in the period
+
+By doing this for both the upper and lower bounds, we can estimate a range for both spending and views. 
+
+`get_pivot_table` adds these results for all ads to get an idea of who is spending the most.
+
+However, this is just an estimate. The [Meta Ad Library Report](https://m.facebook.com/ads/library/report/) provides the most reliable information on aggregated amounts spent by pages.
+
+## Pitfalls when harvesting historical data
+
+For Meta, any ad that has no end date is generally regarded as currently active. This causes trouble when ads that clearly ended way back in 2021 have no end date.
+
+Getting accurate end dates for these ads is tricky, so we wrote a script to query the API and manually identify the most recent date that an ad was active on. 
+
+This is a niche topic but it matters because, without treatment, these ads can creep into your calculations and analysis.
+
+## Who are they really targeting?
+
+While regional and demographic targeting information provide some insight into the strategies of advertisers, there is also a much more opaque world.
+
+Facebook allows pages to upload lists of people they want to include in or exclude from their adverts. These can also be used to find 'lookalike' users with similar characteristics. The Ad Library does not provide access to this granular information.
+
+However, we can get an idea (targeted postcodes, interests, behaviors) by going on the [Meta Ad Library website](https://www.facebook.com/ads/library) and viewing the 'Audience' of a page.
+

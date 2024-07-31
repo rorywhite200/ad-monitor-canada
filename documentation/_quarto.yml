@@ -1,0 +1,21 @@
+project:
+  type: book
+
+book:
+  title: "Ad Monitor Documentation"
+  author: "Rory White"
+  date: "7/30/2024"
+  chapters:
+    - index.qmd
+    - collection.qmd
+    - wrangling.qmd
+    - database.qmd
+    - query-library.qmd
+    - nuances.qmd
+
+format:
+  html:
+    theme: simplex
+    css: ["style.css"]
+  pdf:
+    documentclass: scrreprt

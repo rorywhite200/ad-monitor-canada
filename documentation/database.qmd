@@ -1,0 +1,250 @@
+# MySQL database {#sec-database}
+
+## Core database tables
+
+Our MySQL database comprises five tables. The `ads` table is linked by `page_id` and `funder_id` to the `pages` and `funders` tables. Each ad in the `ads` table is linked to the `ad_demographics` and `ad_provinces` tables.
+
+Here is the basic setup:
+
+```{mermaid}
+%%| fig-width: 6
+erDiagram
+    funders ||--o{ ads : funds
+    pages ||--o{ ads : has
+    ads ||--o{ ad_demographics : has
+    ads ||--o{ ad_provinces : has
+
+    funders {
+        int id
+        varchar name
+    }
+    pages {
+        bigint id
+        varchar name
+    }
+    ads {
+        bigint id
+        bigint page_id
+        int funder_id
+    }
+    ad_demographics {
+        bigint ad_id
+        enum gender
+        enum age_range
+    }
+    ad_provinces {
+        bigint ad_id
+        enum province
+    }
+```
+
+## Simplifying querying
+
+Writing useful queries often involves joining many tables together and can be cumbersome for quick data analysis. We have designed `VIEWS` and `PROCEDURES` that make it easier to see interesting results.
+```{mermaid}
+graph TD
+    A[ads_view]
+    B[ads_view_demographics]
+    C[ads_view_provinces]
+    D[get_pivot_table]
+```
+
+### Views
+
+| View Name              | Description                                                                                      | Example Query                                                                                                       |
+|------------------------|--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `ads_view`             | Returns one row per advert, including `funder_name` and `page_name` for simpler querying.       | ```SELECT * FROM ads_view WHERE funder_name = 'Conservative Party of Canada - Parti conservateur du Canada' AND start_date > '2024-07-01';``` |
+| `ads_view_demographics`| Returns multiple rows per advert: one for each demographic targeted.                           | ```SELECT * FROM ads_view_demographics WHERE...```
+| `ads_view_provinces`   | Returns multiple rows per advert: one for each province targeted.                             | ```SELECT * FROM ads_view_provinces WHERE... ``` |
+
+### Pivot tables {#sec-pivot}
+
+The `get_pivot_table` stored procedure allows you to generate a pivot table that aggregates data about ads based on specific criteria. 
+
+```sql
+CALL get_pivot_table('"climate change"', '2024-06-01', '2024-06-30', 'funder')
+```
+
+The procedure takes the following parameters:
+
+- **p_keyword** (VARCHAR): A keyword to filter ads by their content, description, and link title. If `NULL`, no keyword filter is applied.
+- **p_start_date** (DATE): The start date of the period for which data is to be aggregated.
+- **p_end_date** (DATE): The end date of the period for which data is to be aggregated.
+- **p_group_by** (VARCHAR): The dimension by which to group the results. Can be `funder`, `page`, or `both` (default).
+
+This aggregates spending and views for each entity based on ads active in the period. For more information on how this is calculated see @sec-spending.
+
+## Table properties
+
+Select a table to view its properties.
+
+::: {.panel-tabset}
+### funders
+| Property |
+|----------|
+| id       |
+| name     |
+
+### pages
+| Property      |
+|---------------|
+| id            |
+| name          |
+| is_derived_id |
+
+### ads
+| Property           |
+|--------------------|
+| id                 |
+| page_id            |
+| funder_id          |
+| created_date       |
+| start_date         |
+| end_date           |
+| is_active          |
+| ad_library_url     |
+| currency           |
+| audience_min       |
+| audience_max       |
+| views_min          |
+| views_max          |
+| cost_min           |
+| cost_max           |
+| content_id         |
+| platforms          |
+| languages          |
+| body               |
+| link_url           |
+| description        |
+| link_title         |
+| provinces          |
+| demographics       |
+### ad_demographics
+| Property                |
+|-------------------------|
+| ad_id                   |
+| gender                  |
+| age_range               |
+| age_gender_percentage   |
+### ad_provinces
+
+| Property               |
+|------------------------|
+| ad_id                  |
+| province               |
+| province_percentage    |
+### ads_view
+| Property           |
+|--------------------|
+| ad_id              |
+| page_id            |
+| page_name          |
+| funder_name        |
+| start_date         |
+| end_date           |
+| is_active          |
+| ad_library_url     |
+| currency           |
+| views_min          |
+| views_max          |
+| cost_min           |
+| cost_max           |
+| platforms          |
+| languages          |
+| body               |
+| link_url           |
+| description        |
+| link_title         |
+| provinces          |
+| demographics       |
+### ads_view_demographics
+
+| Property                |
+|-------------------------|
+| ad_id                   |
+| page_name               |
+| funder_name             |
+| start_date              |
+| end_date                |
+| is_active               |
+| ad_library_url          |
+| currency                |
+| views_min               |
+| views_max               |
+| cost_min                |
+| cost_max                |
+| platforms               |
+| languages               |
+| body                    |
+| link_url                |
+| description             |
+| link_title              |
+| gender                  |
+| age_range               |
+| age_gender_percentage   |
+### ads_view_provinces
+
+| Property               |
+|------------------------|
+| ad_id                  |
+| page_name              |
+| funder_name            |
+| start_date             |
+| end_date               |
+| is_active              |
+| ad_library_url         |
+| currency               |
+| views_min              |
+| views_max              |
+| cost_min               |
+| cost_max               |
+| platforms              |
+| languages              |
+| body                   |
+| link_url               |
+| description            |
+| link_title             |
+| province               |
+| province_percentage    |
+### get_pivot_table
+| Property                           |
+|------------------------------------|
+| group_id                           |
+| group_name                         |
+| ad_count                           |
+| total_min_spend_for_period          |
+| total_max_spend_for_period          |
+| total_min_views_for_period          |
+| total_max_views_for_period          |
+:::
+
+## Top Tips for Querying
+
+1. Include both the `start_date` and `end_date` properties as the query will be faster than filtering by just one.
+
+2. For most queries, use the `ads_view` table rather than `ads`. It's faster even for counting rows.
+
+3. If the database is slow, try to restrict your search. E.g. use a `WHERE` clause to search for a specific funder, keyword, date range combination.
+
+4. Avoid trying to join unparsed demographic, regional and ad together together as you get row explosion.
+
+5. There are two different strategies for filtering by date:
+
+
+::: {.panel-tabset}
+
+# Querying by active date
+
+```sql
+end_date >= 2024-01-01 and start_date <= 2024-01-31
+ ```
+Returns all ads active in January 2024. This is the method used by the Facebook Ad Library and report.
+
+
+# Querying by launch date
+```sql
+start_date >= 2024-01-01 and start_date <= 2024-01-31
+``` 
+Returns all ads launched in January 2024.
+
+:::

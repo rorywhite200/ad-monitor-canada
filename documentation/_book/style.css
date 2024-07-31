@@ -1,0 +1,26 @@
+.cluster rect {
+    fill: #fcfcfc !important;
+    stroke: #666;
+    stroke-width: 1px;
+}
+
+.flowchart-link {
+    stroke: #858484 !important;
+}
+
+#title-block-header.quarto-title-block.default .quarto-title .title {
+    margin-bottom: 3rem;
+}
+
+#mermaid-1 .nodeLabel {
+    color: black !important;
+}
+
+.figure {
+    margin-bottom: 1rem;
+}
+
+
+#mermaid-1 .entityLabel {
+    fill: black !important;
+}

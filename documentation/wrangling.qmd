@@ -1,0 +1,70 @@
+# Data wrangling {#sec-wrangling}
+
+## Diagram
+```{mermaid}
+flowchart TD
+    A[Fetch Ads] --> B[Process Each Ad]
+    B --> C[Get/Create Funder ID]
+    B --> D[Get/Create Page ID]
+    C & D --> E[Create Ad Data]
+    E --> F[Ads List]
+    E --> G[Demographics List]
+    E --> H[Regions List]
+    F & G & H --> I[Batch Insert to DB]
+
+    style A fill:#f9d71c,stroke:#333,stroke-width:2px
+    style B fill:#8ed1fc,stroke:#333,stroke-width:2px
+    style C fill:#ff9999,stroke:#333,stroke-width:2px
+    style D fill:#ff9999,stroke:#333,stroke-width:2px
+    style E fill:#8ed1fc,stroke:#333,stroke-width:2px
+    style F fill:#82ca9d,stroke:#333,stroke-width:2px
+    style G fill:#82ca9d,stroke:#333,stroke-width:2px
+    style H fill:#82ca9d,stroke:#333,stroke-width:2px
+    style I fill:#ff9999,stroke:#333,stroke-width:2px
+```
+
+
+## Dealing with empty values
+
+Meta's API often returns ads with missing values, which can cause issues with data integrity. Here is how we deal with each one:
+
+| Missing Field                          | Action Taken                                                             |
+|----------------------------------------|--------------------------------------------------------------------------|
+| `page_id`                              | Use a hashing algorithm to generate one based on the page name. Derived ids are tracked by the `is_derived` property in the pages table.           |
+| `end_date`                             | Use the current date and store ongoing status in a boolean `is_active`   |
+| `estimated_audience_size` or `impressions` upper bound | Set equal to lower bound                                      |
+| `gender` or `age`                      | Set as 'unspecified'                                                     |
+
+## Dealing with non-Canadian adverts
+
+Often, advertisers based outside of Canada will include users within Canada for a very small fraction of their ad targeting. For comprehensiveness, we opted to collect these ads. However, any non-Canadian regions are aggregated as 'Overseas' in our database.
+
+## Property names
+
+Here is a translation of Meta's API properties to our own database:
+
+| Meta API Property                    | Our Database Field               |
+|--------------------------------------|----------------------------------|
+| `id`                                 | `id`                             |
+| `page_id`                            | `page_id`                        |
+| `funder_id`                          | `funder_id`                      |
+| `ad_creation_time`                   | `created_date`                   |
+| `ad_delivery_start_time`             | `start_date`                     |
+| `ad_delivery_stop_time`              | `end_date`                       |
+|                                      | `is_active`                      |
+| `ad_snapshot_url`                    | `ad_library_url`                 |
+| `currency`                           | `currency`                       |
+| `estimated_audience_size.lower_bound`| `audience_min`                   |
+| `estimated_audience_size.upper_bound`| `audience_max`                   |
+| `impressions.lower_bound`            | `views_min`                      |
+| `impressions.upper_bound`            | `views_max`                      |
+| `spend.lower_bound`                  | `cost_min`                       |
+| `spend.upper_bound`                  | `cost_max`                       |
+| `publisher_platforms`                | `platforms`                      |
+| `languages`                          | `languages`                      |
+| `ad_creative_bodies`                 | `body`                           |
+| `ad_creative_link_captions`          | `link_url`                       |
+| `ad_creative_link_descriptions`      | `description`                    |
+| `ad_creative_link_titles`            | `link_title`                     |
+| `delivery_by_region`                 | `provinces`                      |
+| `demographic_distribution`           | `demographics`                   |
