@@ -189,7 +189,7 @@ ul.task-list li input[type="checkbox"] {
 <p>It is the <strong>total amount spent on the ad across its entire lifespan</strong>. This is true even if you restrict your search with a date range. The same thing applies to views and audience size.</p>
 <section id="an-exception-get_pivot_table" class="level3" data-number="5.1.1">
 <h3 data-number="5.1.1" class="anchored" data-anchor-id="an-exception-get_pivot_table"><span class="header-section-number">5.1.1</span> An exception: get_pivot_table()</h3>
-<p>The only place in the database where this differs is in the <code>get_pivot_table</code> procedure <a href="#sec-pivot" class="quarto-xref"><span class="quarto-unresolved-ref">sec-pivot</span></a>. Here, we estimate the spending and views <strong>during the date range itself</strong> by doing a couple things in the background:</p>
+<p>The only place in the database where this differs is in the <code>get_pivot_table</code> procedure <a href="database.html#sec-pivot" class="quarto-xref"><span>Section 3.2.2</span></a>. Here, we estimate the spending and views <strong>during the date range itself</strong> by doing a couple things in the background:</p>
 <ol type="1">
 <li>We calculate the average amount per day for the ad</li>
 <li>We multiply this by the number of days in the period</li>

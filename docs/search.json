@@ -1,0 +1,202 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Ad Monitor Documentation",
+    "section": "",
+    "text": "Intro\nThis guide explains our methodology for harvesting political ads shown in Canada from the Meta Ad Library and making the data accessible in a MySQL database.\nWhat does each section cover?\n1  Data collection addresses all things API: how we harvested the data.\n2  Data wrangling explains any judgement calls we made around null values\n3  MySQL database introduces our MySQL database structure and provides tips for querying it\n4  Query Library contains a variety of useful queries for getting interesting data\n5  Nuances touches on important nuances when interpreting the ad library data",
+    "crumbs": [
+      "Intro"
+    ]
+  },
+  {
+    "objectID": "index.html#overview",
+    "href": "index.html#overview",
+    "title": "Ad Monitor Documentation",
+    "section": "Overview",
+    "text": "Overview\nBelow is a diagram of our overall process:\n\n\n\n\n\ngraph LR\n    E[GitHub Actions] --&gt;|Trigger| W[Workflow]\n    subgraph W [Collection and Storage Workflow]\n        B[Data Collection] --&gt; C[Data Wrangling]\n        C --&gt; D[(MySQL Database)]\n    end\n    A[Facebook AdLibrary] -.-&gt;|API| B",
+    "crumbs": [
+      "Intro"
+    ]
+  },
+  {
+    "objectID": "collection.html",
+    "href": "collection.html",
+    "title": "1  Data collection",
+    "section": "",
+    "text": "1.1 Constructing our request",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Data collection</span>"
+    ]
+  },
+  {
+    "objectID": "collection.html#constructing-our-request",
+    "href": "collection.html#constructing-our-request",
+    "title": "1  Data collection",
+    "section": "",
+    "text": "1.1.1 Example request\nTo request data from Ad Library API when need to construct a request url. Here is an example:\nhttps://graph.facebook.com/v20.0/ads_archive?unmask_removed_content=true&ad_type=POLITICAL_AND_ISSUE_ADS&access_token=INSERT_YOUR_TOKEN&fields=id,ad_creation_time,ad_creative_bodies,ad_creative_link_captions,ad_creative_link_descriptions,ad_creative_link_titles,ad_delivery_start_time,ad_delivery_stop_time,ad_snapshot_url,currency,delivery_by_region,demographic_distribution,bylines,impressions,languages,page_id,page_name,publisher_platforms,spend,target_locations,target_gender,target_ages,estimated_audience_size&search_terms=.&ad_reached_countries=CA&search_page_ids=&ad_delivery_date_min=2020-05-22&ad_active_status=ALL&limit=500\nHere are some of the key parameters of our request:\n\nlimit=500: request 500 ads at a time.\nad_delivery_date_min=2020-05-22: only ads shown to users since 2020-05-22\nad_type=POLITICAL_AND_ISSUE_ADS: filter for only political ads\nunmask_removed_content=true: include ads that broke Facebook’s content guidelines\nad_active_status=ALL: ads don’t have to be currently active\nad_reached_countries=CA: only ads shown in Canada\n\n\n\n1.1.2 How do we do this in our code?\nTo construct the url dynamically based on the current date we adapted some code provided by Meta.\n\n\n\n\n\nflowchart LR\n    A[\"ad_collector.py\"] --&gt;|\"Creates and configures\"| B[\"FbAdsLibraryTraversal\"]\n    C[\"fb_ads_library_api.py\"] --&gt;|\"Provides\"| B\n    B --&gt;|\"Constructs and uses URL\"| D[(\"Facebook\\nAds API\")]\n    \n    style A fill:#f9d71c,stroke:#333,stroke-width:2px\n    style B fill:#8ed1fc,stroke:#333,stroke-width:2px\n    style C fill:#8ed1fc,stroke:#333,stroke-width:2px\n    style D fill:#f5f5f5,stroke:#333,stroke-width:2px\n\n\n\n\n\n\nIn ad_collector.py, we use a class called FbAdsLibraryTraversal from fb_ads_library_api.py. We then make an instance of this class with the details we need for our API request.\nHere is an example:\nfrom fb_ads_library_api import FbAdsLibraryTraversal\n\ncollector = FbAdsLibraryTraversal(\n        facebook_api_keys,\n        \"id,ad_creation_time,ad_creative_bodies,ad_creative_link_captions,ad_creative_link_descriptions,ad_creative_link_titles,ad_delivery_start_time,ad_delivery_stop_time,ad_snapshot_url,currency,delivery_by_region,demographic_distribution,bylines,impressions,languages,page_id,page_name,publisher_platforms,spend,target_locations,target_gender,target_ages,estimated_audience_size\",\n        \".\",\n        \"CA\",\n        ad_delivery_date_min=start_date,\n        api_version=\"v20.0\"\n    )\nOnce our collector is set up, we make the API call using collector.generate_ad_archives(). This returns a list of dictionaries - one for each ad. The ads are returned in batches (of 500) and we wrangle and extract the key details for submission to the database.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Data collection</span>"
+    ]
+  },
+  {
+    "objectID": "collection.html#avoiding-api-errors",
+    "href": "collection.html#avoiding-api-errors",
+    "title": "1  Data collection",
+    "section": "1.2 Avoiding API errors",
+    "text": "1.2 Avoiding API errors\n\n1.2.1 Too much data requested\nSome quarto are exceptionally long (~90,000 characters!). This creates inconsistency around how many ads you can safely request at once. To solve this we implement the following sliding window strategy:\nStep 1: Start by collecting large number of ads (500)\nStep 2: If we encounter “Request less data” error, halve request size\nStep 3: Repeat step 2 recursively\nStep 4: If we successfully collect all 500, return to Step 1. Otherwise, request problematic ad without body text.\n\n\n1.2.2 Too many requests made\nWe use multiple API keys on rotation by creating multiple Meta ‘apps’. This means that if one key reaches the limit total_time=100 then we can switch to a different key.\n\n\n\n\n\n\nRenewing API access\n\n\n\nLong term API tokens expire after three months so you have to renew them.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Data collection</span>"
+    ]
+  },
+  {
+    "objectID": "collection.html#active-vs-launched-ads",
+    "href": "collection.html#active-vs-launched-ads",
+    "title": "1  Data collection",
+    "section": "1.3 Active vs launched ads",
+    "text": "1.3 Active vs launched ads\n\n\n\n\n\n\nKey distinction\n\n\n\nMeta’s API only allows us to request the ads active during a date range, not those launched. If you want launches, you can filter the data afterwards. We submit all of the data to our database, without filtering.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Data collection</span>"
+    ]
+  },
+  {
+    "objectID": "collection.html#daily-data-collection",
+    "href": "collection.html#daily-data-collection",
+    "title": "1  Data collection",
+    "section": "1.4 Daily data collection",
+    "text": "1.4 Daily data collection\n\nWe use Github Actions to trigger the collection and storage of ads every day\nAt 12AM EST, we collect and update all ads active in the past month\nAt 8AM, 4PM and 8PM EST we collect and update all ads active on the current day",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Data collection</span>"
+    ]
+  },
+  {
+    "objectID": "wrangling.html",
+    "href": "wrangling.html",
+    "title": "2  Data wrangling",
+    "section": "",
+    "text": "2.1 Diagram\nflowchart TD\n    A[Fetch Ads] --&gt; B[Process Each Ad]\n    B --&gt; C[Get/Create Funder ID]\n    B --&gt; D[Get/Create Page ID]\n    C & D --&gt; E[Create Ad Data]\n    E --&gt; F[Ads List]\n    E --&gt; G[Demographics List]\n    E --&gt; H[Regions List]\n    F & G & H --&gt; I[Batch Insert to DB]\n\n    style A fill:#f9d71c,stroke:#333,stroke-width:2px\n    style B fill:#8ed1fc,stroke:#333,stroke-width:2px\n    style C fill:#ff9999,stroke:#333,stroke-width:2px\n    style D fill:#ff9999,stroke:#333,stroke-width:2px\n    style E fill:#8ed1fc,stroke:#333,stroke-width:2px\n    style F fill:#82ca9d,stroke:#333,stroke-width:2px\n    style G fill:#82ca9d,stroke:#333,stroke-width:2px\n    style H fill:#82ca9d,stroke:#333,stroke-width:2px\n    style I fill:#ff9999,stroke:#333,stroke-width:2px",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Data wrangling</span>"
+    ]
+  },
+  {
+    "objectID": "wrangling.html#dealing-with-empty-values",
+    "href": "wrangling.html#dealing-with-empty-values",
+    "title": "2  Data wrangling",
+    "section": "2.2 Dealing with empty values",
+    "text": "2.2 Dealing with empty values\nMeta’s API often returns ads with missing values, which can cause issues with data integrity. Here is how we deal with each one:\n\n\n\n\n\n\n\nMissing Field\nAction Taken\n\n\n\n\npage_id\nUse a hashing algorithm to generate one based on the page name. Derived ids are tracked by the is_derived property in the pages table.\n\n\nend_date\nUse the current date and store ongoing status in a boolean is_active\n\n\nestimated_audience_size or impressions upper bound\nSet equal to lower bound\n\n\ngender or age\nSet as ‘unspecified’",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Data wrangling</span>"
+    ]
+  },
+  {
+    "objectID": "wrangling.html#dealing-with-non-canadian-adverts",
+    "href": "wrangling.html#dealing-with-non-canadian-adverts",
+    "title": "2  Data wrangling",
+    "section": "2.3 Dealing with non-Canadian adverts",
+    "text": "2.3 Dealing with non-Canadian adverts\nOften, advertisers based outside of Canada will include users within Canada for a very small fraction of their ad targeting. For comprehensiveness, we opted to collect these ads. However, any non-Canadian regions are aggregated as ‘Overseas’ in our database.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Data wrangling</span>"
+    ]
+  },
+  {
+    "objectID": "wrangling.html#property-names",
+    "href": "wrangling.html#property-names",
+    "title": "2  Data wrangling",
+    "section": "2.4 Property names",
+    "text": "2.4 Property names\nHere is a translation of Meta’s API properties to our own database:\n\n\n\n\n\n\n\nMeta API Property\nOur Database Field\n\n\n\n\nid\nid\n\n\npage_id\npage_id\n\n\nfunder_id\nfunder_id\n\n\nad_creation_time\ncreated_date\n\n\nad_delivery_start_time\nstart_date\n\n\nad_delivery_stop_time\nend_date\n\n\n\nis_active\n\n\nad_snapshot_url\nad_library_url\n\n\ncurrency\ncurrency\n\n\nestimated_audience_size.lower_bound\naudience_min\n\n\nestimated_audience_size.upper_bound\naudience_max\n\n\nimpressions.lower_bound\nviews_min\n\n\nimpressions.upper_bound\nviews_max\n\n\nspend.lower_bound\ncost_min\n\n\nspend.upper_bound\ncost_max\n\n\npublisher_platforms\nplatforms\n\n\nlanguages\nlanguages\n\n\nad_creative_bodies\nbody\n\n\nad_creative_link_captions\nlink_url\n\n\nad_creative_link_descriptions\ndescription\n\n\nad_creative_link_titles\nlink_title\n\n\ndelivery_by_region\nprovinces\n\n\ndemographic_distribution\ndemographics",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Data wrangling</span>"
+    ]
+  },
+  {
+    "objectID": "database.html",
+    "href": "database.html",
+    "title": "3  MySQL database",
+    "section": "",
+    "text": "3.1 Core database tables\nOur MySQL database comprises five tables. The ads table is linked by page_id and funder_id to the pages and funders tables. Each ad in the ads table is linked to the ad_demographics and ad_provinces tables.\nHere is the basic setup:\nerDiagram\n    funders ||--o{ ads : funds\n    pages ||--o{ ads : has\n    ads ||--o{ ad_demographics : has\n    ads ||--o{ ad_provinces : has\n\n    funders {\n        int id\n        varchar name\n    }\n    pages {\n        bigint id\n        varchar name\n    }\n    ads {\n        bigint id\n        bigint page_id\n        int funder_id\n    }\n    ad_demographics {\n        bigint ad_id\n        enum gender\n        enum age_range\n    }\n    ad_provinces {\n        bigint ad_id\n        enum province\n    }",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>MySQL database</span>"
+    ]
+  },
+  {
+    "objectID": "database.html#simplifying-querying",
+    "href": "database.html#simplifying-querying",
+    "title": "3  MySQL database",
+    "section": "3.2 Simplifying querying",
+    "text": "3.2 Simplifying querying\nWriting useful queries often involves joining many tables together and can be cumbersome for quick data analysis. We have designed VIEWS and PROCEDURES that make it easier to see interesting results.\n\n\n\n\n\ngraph TD\n    A[ads_view]\n    B[ads_view_demographics]\n    C[ads_view_provinces]\n    D[get_pivot_table]\n\n\n\n\n\n\n\n3.2.1 Views\n\n\n\n\n\n\n\n\nView Name\nDescription\nExample Query\n\n\n\n\nads_view\nReturns one row per advert, including funder_name and page_name for simpler querying.\nSELECT * FROM ads_view WHERE funder_name = 'Conservative Party of Canada - Parti conservateur du Canada' AND start_date &gt; '2024-07-01';\n\n\nads_view_demographics\nReturns multiple rows per advert: one for each demographic targeted.\nSELECT * FROM ads_view_demographics WHERE...\n\n\nads_view_provinces\nReturns multiple rows per advert: one for each province targeted.\nSELECT * FROM ads_view_provinces WHERE...\n\n\n\n\n\n3.2.2 Pivot tables\nThe get_pivot_table stored procedure allows you to generate a pivot table that aggregates data about ads based on specific criteria.\nCALL get_pivot_table('\"climate change\"', '2024-06-01', '2024-06-30', 'funder')\nThe procedure takes the following parameters:\n\np_keyword (VARCHAR): A keyword to filter ads by their content, description, and link title. If NULL, no keyword filter is applied.\np_start_date (DATE): The start date of the period for which data is to be aggregated.\np_end_date (DATE): The end date of the period for which data is to be aggregated.\np_group_by (VARCHAR): The dimension by which to group the results. Can be funder, page, or both (default).\n\nThis aggregates spending and views for each entity based on ads active in the period. For more information on how this is calculated see Section 5.1.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>MySQL database</span>"
+    ]
+  },
+  {
+    "objectID": "database.html#table-properties",
+    "href": "database.html#table-properties",
+    "title": "3  MySQL database",
+    "section": "3.3 Table properties",
+    "text": "3.3 Table properties\nSelect a table to view its properties.\n\nfunderspagesadsad_demographicsad_provincesads_viewads_view_demographicsads_view_provincesget_pivot_table\n\n\n\n\n\nProperty\n\n\n\n\nid\n\n\nname\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nid\n\n\nname\n\n\nis_derived_id\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nid\n\n\npage_id\n\n\nfunder_id\n\n\ncreated_date\n\n\nstart_date\n\n\nend_date\n\n\nis_active\n\n\nad_library_url\n\n\ncurrency\n\n\naudience_min\n\n\naudience_max\n\n\nviews_min\n\n\nviews_max\n\n\ncost_min\n\n\ncost_max\n\n\ncontent_id\n\n\nplatforms\n\n\nlanguages\n\n\nbody\n\n\nlink_url\n\n\ndescription\n\n\nlink_title\n\n\nprovinces\n\n\ndemographics\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nad_id\n\n\ngender\n\n\nage_range\n\n\nage_gender_percentage\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nad_id\n\n\nprovince\n\n\nprovince_percentage\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nad_id\n\n\npage_id\n\n\npage_name\n\n\nfunder_name\n\n\nstart_date\n\n\nend_date\n\n\nis_active\n\n\nad_library_url\n\n\ncurrency\n\n\nviews_min\n\n\nviews_max\n\n\ncost_min\n\n\ncost_max\n\n\nplatforms\n\n\nlanguages\n\n\nbody\n\n\nlink_url\n\n\ndescription\n\n\nlink_title\n\n\nprovinces\n\n\ndemographics\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nad_id\n\n\npage_name\n\n\nfunder_name\n\n\nstart_date\n\n\nend_date\n\n\nis_active\n\n\nad_library_url\n\n\ncurrency\n\n\nviews_min\n\n\nviews_max\n\n\ncost_min\n\n\ncost_max\n\n\nplatforms\n\n\nlanguages\n\n\nbody\n\n\nlink_url\n\n\ndescription\n\n\nlink_title\n\n\ngender\n\n\nage_range\n\n\nage_gender_percentage\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\nad_id\n\n\npage_name\n\n\nfunder_name\n\n\nstart_date\n\n\nend_date\n\n\nis_active\n\n\nad_library_url\n\n\ncurrency\n\n\nviews_min\n\n\nviews_max\n\n\ncost_min\n\n\ncost_max\n\n\nplatforms\n\n\nlanguages\n\n\nbody\n\n\nlink_url\n\n\ndescription\n\n\nlink_title\n\n\nprovince\n\n\nprovince_percentage\n\n\n\n\n\n\n\n\nProperty\n\n\n\n\ngroup_id\n\n\ngroup_name\n\n\nad_count\n\n\ntotal_min_spend_for_period\n\n\ntotal_max_spend_for_period\n\n\ntotal_min_views_for_period\n\n\ntotal_max_views_for_period",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>MySQL database</span>"
+    ]
+  },
+  {
+    "objectID": "database.html#top-tips-for-querying",
+    "href": "database.html#top-tips-for-querying",
+    "title": "3  MySQL database",
+    "section": "3.4 Top Tips for Querying",
+    "text": "3.4 Top Tips for Querying\n\nInclude both the start_date and end_date properties as the query will be faster than filtering by just one.\nFor most queries, use the ads_view table rather than ads. It’s faster even for counting rows.\nIf the database is slow, try to restrict your search. E.g. use a WHERE clause to search for a specific funder, keyword, date range combination.\nAvoid trying to join unparsed demographic, regional and ad together together as you get row explosion.\nThere are two different strategies for filtering by date:\n\n\nQuerying by active dateQuerying by launch date\n\n\nend_date &gt;= 2024-01-01 and start_date &lt;= 2024-01-31\nReturns all ads active in January 2024. This is the method used by the Facebook Ad Library and report.\n\n\nstart_date &gt;= 2024-01-01 and start_date &lt;= 2024-01-31\nReturns all ads launched in January 2024.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>MySQL database</span>"
+    ]
+  },
+  {
+    "objectID": "query-library.html",
+    "href": "query-library.html",
+    "title": "4  Query Library",
+    "section": "",
+    "text": "Discover useful queries.\n\n\n\n\n\n\n{\n  const queries = {};\n\n// Transform the original object\n    data.Name.forEach((name, index) =&gt; {\n    queries[name] = {\n        query: data.Query[index],\n        note: data.Notes[index]\n    };\n    });\n\n  const styles = html`&lt;style&gt;\n    #container {\n      display: flex;\n      height: 400px;\n      background: #101b3d;\n      font-family: sans-serif;\n    }\n    #sidebar {\n      width: 30%;\n      padding: 20px;\n      box-sizing: border-box;\n      display: flex;\n      flex-direction: column;\n      height: 400px;\n      color: #8892b0;\n      font-size: 0.85rem;\n      font-weight: bold;\n    }\n    #search-box {\n      width: 100%;\n      padding: 10px;\n      margin-bottom: 10px;\n      border: 1px solid #233554; \n      border-radius: 5px;\n      color: #8892b0;\n      background-color: #172a45;\n    }\n    #query-list {\n      flex-grow: 1;\n      overflow-y: auto;\n      border: 1px solid #233554;\n      border-radius: 5px;\n      max-height: calc(100vh - 100px);\n      background-color: #172a45;\n    }\n    .query-option {\n      padding: 10px;\n      cursor: pointer;\n      transition: background-color 0.3s;\n      border-bottom: 1px solid #233554;\n    }\n    .query-option:hover {\n      background-color: #1d3456;\n    }\n    #content {\n      width: 70%;\n      padding: 20px;\n      box-sizing: border-box;\n      display: flex;\n      flex-direction: column;\n      height: 400px;\n    }\n    #query-editor {\n      width: 100%;\n      flex-grow: 1;\n      font-family: 'Courier New', monospace;\n      padding: 20px;\n      border: 1px solid #233554;\n      border-radius: 5px;\n      font-size: 18px;\n      line-height: 1.5;\n      background-color: #172a45;\n      color: #8892b0;\n      box-shadow: inset 0 0 10px rgba(0,0,0,0.1);\n      overflow-y: auto;\n      white-space: pre-wrap;\n      word-wrap: break-word;\n    }\n    #query-editor:focus {\n      outline: none;\n    }\n    #query-note {\n      margin-top: 10px;\n      padding: 10px;\n      background-color: #233554;\n      border-radius: 5px;\n      color: #8892b0;\n      font-size: 0.9rem;\n    }\n    .keyword { color: #ff79c6; }\n    .function { color: #8be9fd; }\n    .string { color: #f1fa8c; }\n    .number { color: #bd93f9; }\n    .comment { color: #6272a4; }\n  &lt;/style&gt;`;\n\n  const container = html`&lt;div id=\"container\"&gt;`;\n  \n  const sidebar = html`&lt;div id=\"sidebar\"&gt;`;\n  const searchBox = html`&lt;input type=\"text\" id=\"search-box\" placeholder=\"Search queries...\"&gt;`;\n  const queryList = html`&lt;div id=\"query-list\"&gt;`;\n\n  const content = html`&lt;div id=\"content\"&gt;`;\n  const queryEditor = html`&lt;div id=\"query-editor\" contenteditable=\"true\" spellcheck=\"false\"&gt;&lt;/div&gt;`;\n  const queryNote = html`&lt;div id=\"query-note\"&gt;&lt;/div&gt;`;\n\n  function renderQueryList(filter = '') {\n    queryList.innerHTML = '';  \n    Object.keys(queries).forEach(key =&gt; {\n      if (key.toLowerCase().includes(filter.toLowerCase())) {\n        const option = html`&lt;div class=\"query-option\"&gt;${key}&lt;/div&gt;`;\n        option.onclick = () =&gt; {\n          queryEditor.textContent = queries[key].query;\n          queryNote.textContent = queries[key].note;\n          highlightSyntax();\n        };\n        queryList.appendChild(option);\n      }\n    }); \n  }\n\n  function highlightSyntax() {\n    let text = queryEditor.innerText;\n    text = text.replace(/\\b(CALL|SELECT|FROM|WHERE|JOIN|ON|GROUP BY|HAVING|ORDER BY|UNION|CASE|WHEN|THEN|ELSE|END|AS|WITH)\\b/gi, '&lt;span class=\"keyword\"&gt;$1&lt;/span&gt;');\n    text = text.replace(/\\b(AVG|SUM|COUNT|MAX|MIN)\\b/gi, '&lt;span class=\"function\"&gt;$1&lt;/span&gt;');\n    text = text.replace(/'([^']*)'/g, '&lt;span class=\"string\"&gt;\\'$1\\'&lt;/span&gt;');\n    text = text.replace(/\\b(\\d+)\\b/g, '&lt;span class=\"number\"&gt;$1&lt;/span&gt;');\n    text = text.replace(/--.*$/gm, '&lt;span class=\"comment\"&gt;$&&lt;/span&gt;');  \n           \n    // Save cursor position\n    const selection = window.getSelection();\n    const range = selection.getRangeAt(0);\n    const preCaretRange = range.cloneRange();\n    preCaretRange.selectNodeContents(queryEditor);\n    preCaretRange.setEnd(range.endContainer, range.endOffset);\n    const caretOffset = preCaretRange.toString().length;\n\n    // Update content\n    queryEditor.innerHTML = text;\n\n    // Restore cursor position\n    const newRange = document.createRange();\n    newRange.setStart(queryEditor, 0);\n    newRange.setEnd(queryEditor, 0);\n    const nodeStack = [queryEditor];\n    let node, foundStart = false, stop = false;\n    let charCount = 0;\n\n    while (!stop && (node = nodeStack.pop())) {\n      if (node.nodeType === Node.TEXT_NODE) {\n        const nextCharCount = charCount + node.length;\n        if (!foundStart && caretOffset &gt;= charCount && caretOffset &lt;= nextCharCount) {\n          newRange.setStart(node, caretOffset - charCount);\n          foundStart = true;\n        }\n        if (foundStart && caretOffset &gt;= charCount && caretOffset &lt;= nextCharCount) {\n          newRange.setEnd(node, caretOffset - charCount);\n          stop = true;\n        }\n        charCount = nextCharCount;\n      } else {\n        let i = node.childNodes.length;\n        while (i--) {\n          nodeStack.push(node.childNodes[i]);\n        }\n      }\n    }\n\n    selection.removeAllRanges();\n    selection.addRange(newRange);\n  }\n\n  searchBox.oninput = () =&gt; renderQueryList(searchBox.value);\n  queryEditor.oninput = highlightSyntax;\n\n  // Set placeholder text\n  queryEditor.dataset.placeholder = \"Select a query from the list\";\n\n  // Handle placeholder behavior\n  queryEditor.onfocus = function() {\n    if (this.textContent.trim() === '') {\n      this.textContent = '';\n    }\n  };\n\n  queryEditor.onblur = function() {\n    if (this.textContent.trim() === '') {\n      this.textContent = '';\n    }\n  };\n\n  sidebar.append(searchBox, queryList);\n  content.append(queryEditor, queryNote);\n  container.append(sidebar, content);\n\n  renderQueryList();\n  \n  return html`${styles}${container}`;\n}",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Query Library</span>"
+    ]
+  },
+  {
+    "objectID": "nuances.html",
+    "href": "nuances.html",
+    "title": "5  Nuances",
+    "section": "",
+    "text": "5.1 What does spending really mean?\nSpending on an ad is reported with an upper bound and lower bound by Meta.\nIt is the total amount spent on the ad across its entire lifespan. This is true even if you restrict your search with a date range. The same thing applies to views and audience size.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Nuances</span>"
+    ]
+  },
+  {
+    "objectID": "nuances.html#sec-spending",
+    "href": "nuances.html#sec-spending",
+    "title": "5  Nuances",
+    "section": "",
+    "text": "5.1.1 An exception: get_pivot_table()\nThe only place in the database where this differs is in the get_pivot_table procedure Section 3.2.2. Here, we estimate the spending and views during the date range itself by doing a couple things in the background:\n\nWe calculate the average amount per day for the ad\nWe multiply this by the number of days in the period\n\nBy doing this for both the upper and lower bounds, we can estimate a range for both spending and views.\nget_pivot_table adds these results for all ads to get an idea of who is spending the most.\nHowever, this is just an estimate. The Meta Ad Library Report provides the most reliable information on aggregated amounts spent by pages.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Nuances</span>"
+    ]
+  },
+  {
+    "objectID": "nuances.html#pitfalls-when-harvesting-historical-data",
+    "href": "nuances.html#pitfalls-when-harvesting-historical-data",
+    "title": "5  Nuances",
+    "section": "5.2 Pitfalls when harvesting historical data",
+    "text": "5.2 Pitfalls when harvesting historical data\nFor Meta, any ad that has no end date is generally regarded as currently active. This causes trouble when ads that clearly ended way back in 2021 have no end date.\nGetting accurate end dates for these ads is tricky, so we wrote a script to query the API and manually identify the most recent date that an ad was active on.\nThis is a niche topic but it matters because, without treatment, these ads can creep into your calculations and analysis.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Nuances</span>"
+    ]
+  },
+  {
+    "objectID": "nuances.html#who-are-they-really-targeting",
+    "href": "nuances.html#who-are-they-really-targeting",
+    "title": "5  Nuances",
+    "section": "5.3 Who are they really targeting?",
+    "text": "5.3 Who are they really targeting?\nWhile regional and demographic targeting information provide some insight into the strategies of advertisers, there is also a much more opaque world.\nFacebook allows pages to upload lists of people they want to include in or exclude from their adverts. These can also be used to find ‘lookalike’ users with similar characteristics. The Ad Library does not provide access to this granular information.\nHowever, we can get an idea (targeted postcodes, interests, behaviors) by going on the Meta Ad Library website and viewing the ‘Audience’ of a page.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Nuances</span>"
+    ]
+  }
+]
