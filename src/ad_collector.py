@@ -16,11 +16,14 @@ from ad_database_utils import (
     truncate_fields
 )
 
-CANADIAN_PROVINCES = {
-    'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
-    'Nova Scotia', 'Ontario', 'Prince Edward Island', 'Quebec', 'Saskatchewan', 
-    'Northwest Territories', 'Yukon', 'Nunavut'
-}
+# Define the quote replacement function
+def replace_quotes(text):
+    if text:
+        # List of double quote characters to replace
+        double_quotes = ['"', '“', '”', '„', '‟', '❝', '❞', '〝', '〞', '＂']
+        for quote in double_quotes:
+            text = text.replace(quote, "'")
+    return text
 
 def ad_collector(start_date, db_connection, facebook_api_keys):
 
@@ -52,6 +55,11 @@ def ad_collector(start_date, db_connection, facebook_api_keys):
             # Prepare demographic data
             prepared_demographics = prepare_demographic_data(ad.get('demographic_distribution'))
             
+            # Apply the replace_quotes function to the relevant fields
+            body_text = replace_quotes(', '.join(ad.get('ad_creative_bodies', [])))
+            description_text = replace_quotes(', '.join(ad.get('ad_creative_link_descriptions', [])))
+            link_title_text = replace_quotes(', '.join(ad.get('ad_creative_link_titles', [])))
+            
             # Add funder_id, page_id, prepared regions, and prepared demographics to the ad dictionary
             ad_data = {
                 'id': ad.get('id'),
@@ -71,10 +79,10 @@ def ad_collector(start_date, db_connection, facebook_api_keys):
                 'cost_max': ad['spend']['upper_bound'] if 'upper_bound' in ad['spend'] else None,
                 'platforms': ','.join(ad.get('publisher_platforms', [])),
                 'languages': ','.join(ad.get('languages', [])),
-                'body': ', '.join(ad.get('ad_creative_bodies', [])),
+                'body': body_text,
                 'link_url': ', '.join(ad.get('ad_creative_link_captions', [])),
-                'description': ', '.join(ad.get('ad_creative_link_descriptions', [])),
-                'link_title': ', '.join(ad.get('ad_creative_link_titles', [])),
+                'description': description_text,
+                'link_title': link_title_text,
                 'provinces': json.dumps(prepared_regions),  # Add prepared regions as JSON
                 'demographics': json.dumps(prepared_demographics)  # Add prepared demographics as JSON
             }
@@ -97,4 +105,3 @@ def ad_collector(start_date, db_connection, facebook_api_keys):
     process_in_batches(region_data_list, 1000, db_connection, batch_insert_region_data)
 
     return ads_list, demographic_data_list, region_data_list
-
