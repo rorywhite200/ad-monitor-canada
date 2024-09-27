@@ -16,13 +16,15 @@ from ad_database_utils import (
     truncate_fields
 )
 
-# Define the quote replacement function
-def replace_quotes(text):
+# Define the text cleaning function
+def clean_text(text):
     if text:
         # List of double quote characters to replace
         double_quotes = ['"', '“', '”', '„', '‟', '❝', '❞', '〝', '〞', '＂']
         for quote in double_quotes:
             text = text.replace(quote, "'")
+        # Replace new lines with a space
+        text = text.replace('\n', ' ').replace('\r', ' ')
     return text
 
 def ad_collector(start_date, db_connection, facebook_api_keys):
@@ -55,10 +57,10 @@ def ad_collector(start_date, db_connection, facebook_api_keys):
             # Prepare demographic data
             prepared_demographics = prepare_demographic_data(ad.get('demographic_distribution'))
             
-            # Apply the replace_quotes function to the relevant fields
-            body_text = replace_quotes(', '.join(ad.get('ad_creative_bodies', [])))
-            description_text = replace_quotes(', '.join(ad.get('ad_creative_link_descriptions', [])))
-            link_title_text = replace_quotes(', '.join(ad.get('ad_creative_link_titles', [])))
+            # Apply the clean_text function to the relevant fields
+            body_text = clean_text(', '.join(ad.get('ad_creative_bodies', [])))
+            description_text = clean_text(', '.join(ad.get('ad_creative_link_descriptions', [])))
+            link_title_text = clean_text(', '.join(ad.get('ad_creative_link_titles', [])))
             
             # Add funder_id, page_id, prepared regions, and prepared demographics to the ad dictionary
             ad_data = {
