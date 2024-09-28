@@ -1,5 +1,13 @@
 name: Run Ad Collector Script
 
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'    # 12 AM ET
+    - cron: '0 12 * * *'   # 8 AM ET
+    - cron: '0 20 * * *'   # 4 PM ET
+    - cron: '0 0 * * *'    # 8 PM ET
+    
 permissions:
   contents: write
 
